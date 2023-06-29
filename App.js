@@ -1,10 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+	ActivityIndicator,
+	Alert,
+	ScrollView,
+	StyleSheet,
+	Text,
+	View,
+} from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { theme } from './colors';
 import { TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextInput } from 'react-native';
+import { Octicons } from '@expo/vector-icons';
 
 const STORAGE_KEY = '@toDos';
 
@@ -19,14 +27,19 @@ export default function App() {
 		await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 	};
 	const loadToDos = async () => {
-		const s = await AsyncStorage.getItem(STORAGE_KEY);
-		setToDos(JSON.parse(s));
-		console.log(JSON.parse(s));
+		try {
+			const s = await AsyncStorage.getItem(STORAGE_KEY);
+			setToDos(JSON.parse(s));
+			console.log(JSON.parse(s));
+		} catch (e) {
+			// saving error
+		}
 	};
 	// similar with local storage
 	useEffect(() => {
 		loadToDos();
 	}, []);
+	console.log(toDos);
 
 	const addToDo = async () => {
 		if (text === '') {
@@ -44,6 +57,24 @@ export default function App() {
 		// alert(text);
 	};
 	// console.log(toDos);
+
+	const deleteToDo = (key) => {
+		Alert.alert('Delete To Do', 'Are you sure?', [
+			{ text: 'Cancel' },
+			{
+				text: "I'm sure",
+				style: 'destructive',
+				onPress: async () => {
+					const newToDos = { ...toDos };
+					delete newToDos[key];
+					setToDos(newToDos);
+					await saveToDos(newToDos);
+				},
+			},
+		]);
+		return;
+	};
+
 	return (
 		<View style={styles.container}>
 			<StatusBar style='auto' />
@@ -70,13 +101,28 @@ export default function App() {
 				placeholder={working ? 'Add a To Do' : 'Where do you want to go?'}
 				style={styles.input}
 			/>
+
 			<ScrollView>
-				{Object.keys(toDos).map((key) =>
-					toDos[key].working === working ? (
-						<View style={styles.toDo} key={key}>
-							<Text style={styles.toDoText}>{toDos[key].text}</Text>
-						</View>
-					) : null,
+				{toDos === null ? (
+					<View style={styles.day}>
+						<ActivityIndicator color='white' size='large' style={{ marginTop: 10 }} />
+					</View>
+				) : (
+					<View>
+						{Object.keys(toDos).map((key) =>
+							toDos[key].working === working ? (
+								<View style={styles.toDo} key={key}>
+									<Text style={styles.toDoText}>{toDos[key].text}</Text>
+
+									<TouchableOpacity onPress={() => deleteToDo(key)}>
+										<Text>
+											<Octicons name='trash' size={20} color={theme.gray} />
+										</Text>
+									</TouchableOpacity>
+								</View>
+							) : null,
+						)}
+					</View>
 				)}
 			</ScrollView>
 		</View>
@@ -113,6 +159,9 @@ const styles = StyleSheet.create({
 		paddingVertical: 20,
 		paddingHorizontal: 40,
 		borderRadius: 15,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
 	},
 	toDoText: {
 		color: 'white',
